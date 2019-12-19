@@ -12,8 +12,8 @@ import kotlin.random.Random
 class WordTossAction : Action {
 
     companion object {
-        private val justReverseAction = 5
-        private val putRandomWordsIntoAction = 7
+        private const val justReverseAction = 1
+        private const val putRandomWordsIntoAction = 2
         private val randomWords = arrayOf("ну",
                 "йобана",
                 "как",
@@ -22,18 +22,23 @@ class WordTossAction : Action {
                 "блиааааа",
                 "хочу",
                 "Плотва")
+        private val triggerWords = arrayOf("какать",
+                "плотва",
+                "панин",
+                "весело")
+        private val shouldFireRandomNumbers = listOf(1, 3, 5, 7)
     }
+
+    override val priority = 1
 
     override fun fire(update: Update): suspend (AbsSender) -> Unit {
         val message = update.message
         val text = message.text ?: return {}
 
-        val result = when (getRandomNumber()) {
-            5 -> tossTheSentence(text, 5)
-            7 -> tossTheSentence(text, 7)
-            3 -> tossTheSentence(text, 5)
-            1 -> tossTheSentence(text, 7)
-            else -> ""
+        val result = if (triggerWords.any { text.contains(it) }) {
+            putRandomWordsIntoSentence(text)
+        } else {
+            reverseSentence(text)
         }
         return when (result.isNotEmpty()) {
             true -> { it -> it.execute(SendMessage(update.chatId(), result)) }
@@ -43,14 +48,24 @@ class WordTossAction : Action {
         }
     }
 
-    private fun tossTheSentence(messageToToss: String, action: Int) = when (action) {
-        justReverseAction -> {
-            reverseSentence(messageToToss)
+    private fun putRandomWordsIntoSentence(sentenceToEdit: String): String {
+        val splitted = sentenceToEdit.split(" ")
+        val result = StringBuilder()
+        return if (splitted.size > 1) {
+            splitted.forEachIndexed { index, word ->
+                run {
+                    if (index % 2 == 0) {
+                        result.append(word.toLowerCase())
+                                .append(" ")
+                                .append(randomWords[getRandomNumber(until = randomWords.size)])
+                                .append(" ")
+                    }
+                }
+            }
+            result.toString().capitalize()
+        } else {
+            sentenceToEdit
         }
-        putRandomWordsIntoAction -> {
-            reverseSentence(messageToToss)
-        }
-        else -> ""
     }
 
     private fun reverseSentence(sentenceToReverse: String): String {
@@ -58,16 +73,15 @@ class WordTossAction : Action {
         val reversed = StringBuilder()
         return if (splitted.size > 1) {
             splitted.asReversed().forEach {
-                reversed.append(it).append(" ")
+                reversed.append(it.toLowerCase()).append(" ")
             }
-            reversed.toString()
+            reversed.toString().capitalize()
         } else {
             sentenceToReverse
         }
     }
 
-    private fun getRandomNumber() = Random.nextInt(until = 10)
+    private fun getRandomNumber(until: Int = 10) = Random.nextInt(until)
 
-    override fun canFire(message: Message) = true
-
+    override fun canFire(message: Message): Boolean = shouldFireRandomNumbers.contains(getRandomNumber())
 }

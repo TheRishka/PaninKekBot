@@ -6,6 +6,8 @@ import org.telegram.telegrambots.meta.bots.AbsSender
 
 interface Action {
 
+    val priority: Int
+
     fun fire(update: Update): suspend (AbsSender) -> Unit
 
     fun canFire(message: Message): Boolean

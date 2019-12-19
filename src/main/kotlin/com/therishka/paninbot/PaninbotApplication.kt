@@ -1,5 +1,7 @@
 package com.therishka.paninbot
 
+import org.springframework.boot.SpringApplication
+import org.springframework.boot.WebApplicationType
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication
@@ -27,5 +29,7 @@ class PaninbotApplication {
 
 fun main(args: Array<String>) {
     ApiContextInitializer.init()
-	runApplication<PaninbotApplication>(*args)
+    val app = SpringApplication(PaninbotApplication::class.java)
+    app.webApplicationType = WebApplicationType.NONE
+    app.run(*args)
 }

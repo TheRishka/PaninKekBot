@@ -21,8 +21,14 @@ class CommandsExecutor(
         val chat = message.chat
 
         val action = selectAction(update)
-        return action.fire(update)
+        return action?.fire(update) ?: {
+            logger.info("No Action has been found for this text: ${message.text}")
+        }
     }
 
-    private fun selectAction(update: Update) = actions[0]
+    private fun selectAction(update: Update): Action? = actions
+            .sortedByDescending { it.priority }
+            .find {
+                it.canFire(update.message ?: update.editedMessage ?: update.callbackQuery.message)
+            }
 }
