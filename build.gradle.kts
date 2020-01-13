@@ -13,6 +13,7 @@ java.sourceCompatibility = JavaVersion.VERSION_1_8
 
 repositories {
 	mavenCentral()
+    jcenter()
 }
 
 dependencies {
@@ -20,6 +21,9 @@ dependencies {
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("org.telegram:telegrambots:4.4.0.2")
+    implementation("org.jetbrains.exposed:exposed-core:0.20.2")
+    implementation("org.jetbrains.exposed:exposed-jdbc:0.20.2")
+
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.2.2")
 	runtimeOnly("org.postgresql:postgresql")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
