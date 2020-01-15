@@ -3,9 +3,11 @@ package com.therishka.paninbot.actions
 import com.therishka.paninbot.chatId
 import com.therishka.paninbot.data.UsersRepository
 import com.therishka.paninbot.data.models.RatingChange
+import com.therishka.paninbot.toChat
 import com.therishka.paninbot.toUser
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
@@ -19,6 +21,7 @@ class RatingChangeAction(private val usersRepository: UsersRepository) : Action 
     private final val logger = LoggerFactory.getLogger(RatingChangeAction::class.java)
 
     companion object {
+        private const val maxCharsCountOfMessage = 15
         private val ratingIncreaseTriggers = listOf(
                 "+",
                 "спс",
@@ -27,7 +30,8 @@ class RatingChangeAction(private val usersRepository: UsersRepository) : Action 
                 "thank",
                 "сяпки",
                 "дякую",
-                "плюс"
+                "плюс",
+                "яростно плюсую"
         )
         private val ratingDecreaseTriggers = listOf(
                 "-",
@@ -38,32 +42,40 @@ class RatingChangeAction(private val usersRepository: UsersRepository) : Action 
     override val priority = 100
 
     override fun fire(update: Update): suspend (AbsSender) -> Unit {
-        return {
+        return { it ->
             val text = update.message.text
-            val user = update.toUser()
-            val ratingAction = determineRatingAction(text)
-            val newRating = GlobalScope.async {
-                return@async usersRepository.changeUserRating(user, ratingAction)
-            }.await()
-            val message = when (ratingAction) {
-                RatingChange.DECREMENT -> {
-                    "Я уменьшил рейтинг! Теперь рейтинг ${user.name} составляет $newRating"
-                }
-                RatingChange.INCREMENT -> {
-                    "Я увеличил рейтинг! Теперь рейтинг ${user.name} составляет $newRating"
-                }
-                RatingChange.UNKNOWN -> {
-                    logger.error("Unknown rating action! Never should happen")
-                    "Я не знаю что делать! Как так получилось?"
+            val userToChangeRating = update.message?.replyToMessage?.let { repliedMessage ->
+                if (repliedMessage.from?.bot?.not() == true) {
+                    repliedMessage.from.toUser(update.toChat())
+                } else {
+                    null
                 }
             }
-            it.execute(SendMessage(update.chatId(), message))
+            userToChangeRating?.let { userToChangeRatingFor ->
+                val ratingAction = determineRatingAction(text)
+                val newRating = GlobalScope.async {
+                    return@async usersRepository.changeUserRating(userToChangeRatingFor, ratingAction)
+                }.await()
+                val message = when (ratingAction) {
+                    RatingChange.UNKNOWN -> {
+                        logger.error("Unknown rating action! Never should happen")
+                        "Я не знаю что делать! Как так получилось?"
+                    }
+                    else -> "Теперь рейтинг ${userToChangeRatingFor.name} составляет $newRating"
+                }
+                it.execute(SendMessage(update.chatId(), message))
+            }
         }
     }
 
     override fun canFire(message: Message) = if (message.isReply) {
         when {
+            message.replyToMessage?.from?.id?.toLong() == message.from?.id?.toLong() -> {
+                // if user is trying to increase own rating
+                false
+            }
             message.replyToMessage?.from?.bot ?: false -> {
+                // if user has replied to any bot message
                 false
             }
             message.hasText() -> {
@@ -84,9 +96,10 @@ class RatingChangeAction(private val usersRepository: UsersRepository) : Action 
         else -> RatingChange.UNKNOWN
     }
 
-    private fun getFirstLettersOfMessage(message: String) = if (message.length > 6) {
-        message.substring(0, 6)
-    } else {
-        message
-    }
+    private fun getFirstLettersOfMessage(message: String) =
+            if (message.length > maxCharsCountOfMessage) {
+                message.substring(0, maxCharsCountOfMessage)
+            } else {
+                message
+            }
 }

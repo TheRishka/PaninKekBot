@@ -29,7 +29,7 @@ class ChalotraAction : Action {
     override val priority = 2
 
     override fun fire(update: Update): suspend (AbsSender) -> Unit {
-        return { it -> it.execute(SendMessage(update.chatId(), "Чалотра багиня")) }
+        return { it -> it.execute(SendMessage(update.chatId(), "Чалотра багиня!")) }
     }
 
     override fun canFire(message: Message): Boolean {
