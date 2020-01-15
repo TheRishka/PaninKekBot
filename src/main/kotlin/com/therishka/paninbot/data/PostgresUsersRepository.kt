@@ -13,8 +13,14 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Repository
 
+@Suppress("RedundantModalityModifier")
 @Repository
-class PostgresUsersRepository(final val db: Database) : UsersRepository {
+class PostgresUsersRepository(private final val db: Database) : UsersRepository {
+
+    companion object {
+        fun userInChat(userId: Long, chatId: Long) = Users2Chats.user_id eq userId and (Users2Chats
+                .chat_id eq chatId)
+    }
 
     private final val logger = LoggerFactory.getLogger(PostgresUsersRepository::class.java)
 
@@ -27,19 +33,25 @@ class PostgresUsersRepository(final val db: Database) : UsersRepository {
 
     override fun addUser(user: User) {
         transaction(db) {
-//            addLogger(StdOutSqlLogger)
-//            val addedUserId = Users.insertOrUpdate(Users.id) {
-//                it[name] = user.name ?: "Плотва"
-//                it[id] = user.id
-//            } get Users.id
-//            val addedUsers2Chat = Users2Chats.insertOrUpdate(
-//                    Users2Chats.chat_id,
-//                    Users2Chats.user_id
-//            ) {
-//                it[chat_id] = user.chat.id
-//                it[user_id] = user.id
-//            } get Users2Chats.chat_id
-//            print("Added userId == $addedUserId, added Users2Chat Chat_id = $addedUsers2Chat")
+            addLogger(StdOutSqlLogger)
+            val userId = user.id
+            val chatId = user.chat.id
+            val addedUserId = Users.insertOrUpdate(Users.id) {
+                it[name] = user.name ?: "Плотва"
+                it[id] = user.id
+            } get Users.id
+            val users2ChatsValuesCount = Users2Chats.selectUserForSpecificChat(
+                    userId = userId,
+                    chatId = chatId).count()
+            var logMessageForUsers2Chat = "Did not add Users2Chat values"
+            if (users2ChatsValuesCount == 0) {
+                val addedUsers2ChatsUserId = Users2Chats.insert {
+                    it[chat_id] = chatId
+                    it[user_id] = userId
+                } get Users2Chats.user_id
+                logMessageForUsers2Chat = "Added Users2Chat value for $addedUsers2ChatsUserId"
+            }
+            logger.info("Added userId == $addedUserId, $logMessageForUsers2Chat")
         }
     }
 
@@ -68,22 +80,15 @@ class PostgresUsersRepository(final val db: Database) : UsersRepository {
                     .withDistinct().map {
                         it[Users2Chats.active]
                     }.first()
-            println("DEBUG! CURRENT STATUS = $currentStatus ")
-            val debugUsersData = Users2Chats.selectAll().withDistinct().map {
-                listOf(
-                        it[Users2Chats.user_id],
-                        it[Users2Chats.chat_id],
-                        it[Users2Chats.active])
-            }
-            println("DEBUG! $debugUsersData ")
             if (currentStatus == isActive) {
                 false
             } else {
-                Users2Chats.update({
+                val updateResult = Users2Chats.update({
                     Users2Chats.user_id eq user.id and (Users2Chats.chat_id eq user.chat.id)
                 }) {
                     it[active] = isActive
                 }
+                logger.info("UpdateUserStatus: Affected columns: $updateResult")
                 logger.info("Updated userId: ${user.id}, set to isActive = $isActive")
                 true
             }
@@ -95,7 +100,7 @@ class PostgresUsersRepository(final val db: Database) : UsersRepository {
             addLogger(StdOutSqlLogger)
             val currentRating = Users2Chats
                     .slice(Users2Chats.rating)
-                    .select(Users2Chats.user_id eq user.id and (Users2Chats.chat_id eq user.chat.id))
+                    .selectUserForSpecificChat(userId = user.id, chatId = user.chat.id)
                     .withDistinct().map {
                         it[Users2Chats.rating]
                     }.first()
@@ -106,19 +111,23 @@ class PostgresUsersRepository(final val db: Database) : UsersRepository {
                 RatingChange.DECREMENT -> {
                     currentRating - 1
                 }
+                RatingChange.UNKNOWN -> {
+                    logger.info("ChangeUserRating: UNKNOWN RATING CHANGE ACTION!")
+                    currentRating
+                }
             }
-            val updatedResult = Users2Chats.update({
-                Users2Chats.user_id eq user.id and (Users2Chats.chat_id eq user.chat.id)
+            val updateResult = Users2Chats.update({
+                userInChat(user.id, user.chat.id)
             }) {
                 it[rating] = newRating
             }
-            logger.info("Updated user (id: ${user.id}) rating, did the ${ratingChange.name} new " +
-                    "rating " +
-                    "is: $newRating")
+            logger.info("ChangeUserRating: Affected columns: $updateResult")
+            logger.info("Updated user (id: ${user.id}) rating," +
+                    " did the ${ratingChange.name} new rating is: $newRating")
             newRating
         }
     }
 
     fun FieldSet.selectUserForSpecificChat(chatId: Long, userId: Long) =
-            select(Users2Chats.user_id eq userId and (Users2Chats.chat_id eq chatId))
+            select(userInChat(userId, chatId))
 }

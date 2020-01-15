@@ -19,9 +19,9 @@ class CommandsExecutor(
         val message = update.message
                 ?: update.editedMessage
                 ?: update.callbackQuery.message
+        logger.info("Handling message from: ${message.from.userName}")
 
         registerChatAndUser(message)
-        logger.info("Handling message from: ${message.from.userName}")
 
         val action = selectAction(update)
         return action?.fire(update) ?: {

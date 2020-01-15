@@ -48,7 +48,7 @@ class QuitCommandAction(val botConfig: BotConfig,
         return { sender ->
             val didUpdateTheStatus = GlobalScope.async {
                 val user = update.toUser()
-                val result = usersRepository.updateUserStatus(user, true)
+                val result = usersRepository.updateUserStatus(user, false)
                 return@async result
             }.await()
             when (didUpdateTheStatus) {
