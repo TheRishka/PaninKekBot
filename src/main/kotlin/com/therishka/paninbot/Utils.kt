@@ -1,5 +1,7 @@
 package com.therishka.paninbot
 
+import com.therishka.paninbot.data.models.Chat
+import com.therishka.paninbot.data.models.User
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.api.objects.Chat as TelegramChat
 import org.telegram.telegrambots.meta.api.objects.User as TelegramUser

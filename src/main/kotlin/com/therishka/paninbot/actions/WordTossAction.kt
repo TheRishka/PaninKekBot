@@ -12,8 +12,6 @@ import kotlin.random.Random
 class WordTossAction : Action {
 
     companion object {
-        private const val justReverseAction = 1
-        private const val putRandomWordsIntoAction = 2
         private val randomWords = arrayOf("ну",
                 "йобана",
                 "как",
@@ -26,7 +24,7 @@ class WordTossAction : Action {
                 "плотва",
                 "панин",
                 "весело")
-        private val shouldFireRandomNumbers = listOf(1, 3, 5, 7)
+        private val shouldFireRandomNumbers = listOf(5, 11)
     }
 
     override val priority = 1
@@ -81,7 +79,7 @@ class WordTossAction : Action {
         }
     }
 
-    private fun getRandomNumber(until: Int = 10) = Random.nextInt(until)
+    private fun getRandomNumber(until: Int = 30) = Random.nextInt(until)
 
     override fun canFire(message: Message): Boolean = shouldFireRandomNumbers.contains(getRandomNumber())
 }

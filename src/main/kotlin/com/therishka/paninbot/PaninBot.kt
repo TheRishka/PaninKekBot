@@ -9,6 +9,7 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException
 
+@Suppress("UNNECESSARY_SAFE_CALL")
 @Component
 class PaninBot(
         val config: BotConfig,
@@ -37,7 +38,7 @@ class PaninBot(
         }
         GlobalScope.launch { chatChannel.send(update) }
         log.info("Damn update received! chat = ${chat.name} and chatId is ${chat.id}")
-        log.info("User said: ${update.message.text}")
+        log.info("User said: ${update?.message.text}")
     }
 
     override fun getBotUsername(): String {

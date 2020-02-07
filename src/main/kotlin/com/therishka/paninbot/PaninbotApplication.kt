@@ -1,13 +1,12 @@
 package com.therishka.paninbot
 
+import org.jetbrains.exposed.sql.Database
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
-import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.telegram.telegrambots.ApiContextInitializer
-import org.telegram.telegrambots.bots.DefaultBotOptions
 import org.telegram.telegrambots.meta.TelegramBotsApi
 
 @SpringBootApplication
@@ -15,15 +14,20 @@ import org.telegram.telegrambots.meta.TelegramBotsApi
 class PaninbotApplication {
 
     @Bean
-    fun botConfig(): DefaultBotOptions {
-        return DefaultBotOptions()
-    }
-
-    @Bean
     fun telegramBot(bot: PaninBot): TelegramBotsApi {
         val telegramBotsApi = TelegramBotsApi()
         telegramBotsApi.registerBot(bot)
         return telegramBotsApi
+    }
+
+    @Bean
+    fun database(): Database {
+        return Database.connect(
+                "jdbc:postgresql://localhost:5432/paninbotdb",
+                driver = "org.postgresql.Driver",
+                user = "bot_app",
+                password = "m2380103"
+        )
     }
 }
 
