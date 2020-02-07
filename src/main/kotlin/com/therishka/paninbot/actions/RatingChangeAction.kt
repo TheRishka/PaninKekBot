@@ -3,11 +3,14 @@ package com.therishka.paninbot.actions
 import com.therishka.paninbot.chatId
 import com.therishka.paninbot.data.UsersRepository
 import com.therishka.paninbot.data.models.RatingChange
+import com.therishka.paninbot.data.models.User
 import com.therishka.paninbot.toChat
 import com.therishka.paninbot.toUser
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
+import org.joda.time.DateTime
+import org.joda.time.Period
+import org.joda.time.format.PeriodFormatterBuilder
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage
@@ -22,6 +25,7 @@ class RatingChangeAction(private val usersRepository: UsersRepository) : Action 
 
     companion object {
         private const val maxCharsCountOfMessage = 15
+        private const val howOftenUserCanVoteInMs = 1000 * 60 * 60 * 2
         private val ratingIncreaseTriggers = listOf(
                 "+",
                 "спс",
@@ -53,18 +57,55 @@ class RatingChangeAction(private val usersRepository: UsersRepository) : Action 
             }
             userToChangeRating?.let { userToChangeRatingFor ->
                 val ratingAction = determineRatingAction(text)
-                val newRating = GlobalScope.async {
-                    return@async usersRepository.changeUserRating(userToChangeRatingFor, ratingAction)
+                val lastUpdateTime = GlobalScope.async {
+                    return@async usersRepository.getLastChangeUserRatingDate(
+                            userAuthor = update.toUser(),
+                            userTarget = userToChangeRatingFor
+                    )
                 }.await()
-                val message = when (ratingAction) {
-                    RatingChange.UNKNOWN -> {
-                        logger.error("Unknown rating action! Never should happen")
-                        "Я не знаю что делать! Как так получилось?"
+
+                val message = lastUpdateTime?.let {
+                    val ratingPeriod = Period().withMillis(howOftenUserCanVoteInMs)
+                    when (it.plus(ratingPeriod).isBeforeNow) {
+                        true -> createRatingChangeMessage(update, userToChangeRatingFor, ratingAction)
+                        false -> createYouCantChangeMessage(it)
                     }
-                    else -> "Теперь рейтинг ${userToChangeRatingFor.name} составляет $newRating"
-                }
+                } ?: createRatingChangeMessage(update, userToChangeRatingFor, ratingAction)
                 it.execute(SendMessage(update.chatId(), message))
             }
+        }
+    }
+
+    private fun createYouCantChangeMessage(lastRatingUpdateTime: DateTime): String {
+        val period = Period(DateTime.now(), lastRatingUpdateTime.plus(howOftenUserCanVoteInMs.toLong()))
+        val seconds = period.seconds.toPlural("секунду", "секунды", "секунд")
+        val minutes = period.minutes.toPlural("минуту", "минуты", "минут")
+        val hours = period.hours.toPlural("час", "часа", "часов")
+        val formatter = PeriodFormatterBuilder()
+                .appendHours().appendSuffix(" $hours\n")
+                .appendMinutes().appendSuffix(" $minutes\n")
+                .appendSeconds().appendSuffix(" $seconds\n")
+                .printZeroNever()
+                .toFormatter()
+        return "Вы сможете изменить рейтинг через:\n${formatter.print(period)}"
+    }
+
+    private suspend fun createRatingChangeMessage(update: Update,
+                                                  userToChangeRatingFor: User,
+                                                  ratingAction: RatingChange): String {
+        val newRating = GlobalScope.async {
+            return@async usersRepository.changeUserRating(
+                    userAuthor = update.toUser(),
+                    userTarget = userToChangeRatingFor,
+                    ratingChange = ratingAction
+            )
+        }.await()
+        return when (ratingAction) {
+            RatingChange.UNKNOWN -> {
+                logger.error("Unknown rating action! Never should have happened")
+                "Я не знаю что делать! Как так получилось?"
+            }
+            else -> "Теперь рейтинг ${userToChangeRatingFor.name} составляет $newRating"
         }
     }
 
@@ -72,7 +113,7 @@ class RatingChangeAction(private val usersRepository: UsersRepository) : Action 
         when {
             message.replyToMessage?.from?.id?.toLong() == message.from?.id?.toLong() -> {
                 // if user is trying to increase own rating
-                false
+                true
             }
             message.replyToMessage?.from?.bot ?: false -> {
                 // if user has replied to any bot message
@@ -102,4 +143,10 @@ class RatingChangeAction(private val usersRepository: UsersRepository) : Action 
             } else {
                 message
             }
+
+    private fun Int.toPlural(one: String, few: String, many: String) = when {
+        this % 10 == 1 && this % 100 != 11 -> one
+        this % 10 in 2..4 && (this % 100 < 10 || this % 100 >= 20) -> few
+        else -> many
+    }
 }

@@ -3,6 +3,7 @@ package com.therishka.paninbot.data
 import com.therishka.paninbot.data.models.Chat
 import com.therishka.paninbot.data.models.RatingChange
 import com.therishka.paninbot.data.models.User
+import org.joda.time.DateTime
 
 interface UsersRepository {
 
@@ -17,5 +18,7 @@ interface UsersRepository {
      */
     fun updateUserStatus(user: User, isActive: Boolean): Boolean
 
-    fun changeUserRating(user: User, ratingChange: RatingChange) : Int
+    fun changeUserRating(userAuthor: User, userTarget: User, ratingChange: RatingChange): Int
+
+    fun getLastChangeUserRatingDate(userAuthor: User, userTarget: User): DateTime?
 }
