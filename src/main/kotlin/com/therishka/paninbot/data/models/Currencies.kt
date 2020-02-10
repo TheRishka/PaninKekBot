@@ -3,16 +3,6 @@ package com.therishka.paninbot.data.models
 import org.json.JSONException
 import org.json.JSONObject
 
-class CurrencyResponseMapper() {
-
-}
-
-data class RatesResponse(
-        val rates: Map<String, Rate>,
-        val base: String,
-        val date: String
-)
-
 data class Rate(
         val shortName: String,
         val value: Double
