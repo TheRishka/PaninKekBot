@@ -5,6 +5,7 @@ import org.springframework.boot.SpringApplication
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.boot.web.client.RestTemplateBuilder
 import org.springframework.context.annotation.Bean
 import org.telegram.telegrambots.ApiContextInitializer
 import org.telegram.telegrambots.meta.TelegramBotsApi
@@ -19,6 +20,12 @@ class PaninbotApplication {
         telegramBotsApi.registerBot(bot)
         return telegramBotsApi
     }
+
+    @Bean
+    fun baseUrl() = "https://api.exchangeratesapi.io/"
+
+    @Bean
+    fun restTemplate() = RestTemplateBuilder().build()
 
     @Bean
     fun database(): Database {
