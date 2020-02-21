@@ -8,7 +8,8 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Message
 import org.telegram.telegrambots.meta.api.objects.Update
 import org.telegram.telegrambots.meta.bots.AbsSender
-import kotlin.math.truncate
+import java.math.BigDecimal
+import java.math.RoundingMode
 
 @Component
 class CurrencyConvertAction(private val currencyRepository: CurrencyRepository) : Action {
@@ -111,9 +112,10 @@ class CurrencyConvertAction(private val currencyRepository: CurrencyRepository) 
             rate.shortName.equals(targetCurrency, ignoreCase = true)
         }?.value?.times(amount.toInt()) ?: 0.0
         val convertResult = if (convertRate > 0) {
-            truncate(convertRate).toString()
+            BigDecimal(convertRate).setScale(2, RoundingMode.HALF_EVEN).toString()
         } else "неебу"
-        "Вот что я получил:\n$amount $baseCurrency в $targetCurrency будет $convertResult"
+        "Согласно вот этим мудакам: центробанк Европы,\n" +
+                "Вот что я получил:\n$amount $baseCurrency в $targetCurrency будет $convertResult"
     } catch (error: Exception) {
         "Не получилось спросить у интернета!"
     }
