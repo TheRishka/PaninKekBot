@@ -8,6 +8,8 @@ abstract class CommandAction(private val botConfig: BotConfig) : Action {
 
     abstract val commandName: String
 
+    open fun checkUser(message: Message): Boolean = true
+
     override fun canFire(message: Message): Boolean {
         val entities = message.entities
         return entities?.let {
@@ -15,7 +17,7 @@ abstract class CommandAction(private val botConfig: BotConfig) : Action {
                 entity.type == "bot_command"
                         && entity.text == commandName
                         && isCommandDedicatedToPaninBot(entity.text)
-            }
+            } && checkUser(message)
         } ?: false
     }
 
