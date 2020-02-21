@@ -113,7 +113,7 @@ class RatingChangeAction(private val usersRepository: UsersRepository) : Action 
         when {
             message.replyToMessage?.from?.id?.toLong() == message.from?.id?.toLong() -> {
                 // if user is trying to increase own rating
-                true
+                false
             }
             message.replyToMessage?.from?.bot ?: false -> {
                 // if user has replied to any bot message
